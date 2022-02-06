@@ -3,7 +3,6 @@ from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import pandas as pd
-import numpy as np
 import os
 
 df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_global_format.pkl'))
@@ -155,7 +154,7 @@ def update_reg(food_dropdown, year_slider_reg):
         trendline_color_override = '#fd8585',
         trendline_scope = 'overall', 
         hover_name = graph_df.index,
-        hover_data = ['Emissions Intensity'],
+        hover_data = {'Emissions Intensity': ':.4'},
         color = graph_df.index, 
         title = title)
     
