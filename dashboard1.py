@@ -8,6 +8,7 @@ import os
 df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_global_format.pkl'))
 coord_df = pd.read_pickle(os.path.join('dataframes_pkl','df_coordenadas.pkl'))
 continent_df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_continentes.pkl'))
+gdp_df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_gdp.pkl'))
 
 uk_index = df[df['Area'] == 'United Kingdom'].index
 df.loc[uk_index, 'Area'] = 'United Kingdom of Great Britain and Northern Ireland'
@@ -42,7 +43,7 @@ app.layout = html.Div(
             html.Div(id='table_reg_least')
         )], width = 3, align = 'center', style = {'margin-right': 5})]),
     dbc.Row(  
-        [dbc.Col(dcc.RadioItems(id = 'valor_area', options = ['Country', 'Continent'], value = 'Country', inputStyle={"margin-left": "20px", "margin-right": "5px"}), width = 3, style={'margin-bottom': 30}),
+        [dbc.Col(dcc.RadioItems(id = 'valor_area', options = ['Country', 'Continent', 'GDP'], value = 'Country', inputStyle={"margin-left": "20px", "margin-right": "5px"}), width = 3, style={'margin-bottom': 30}),
         dbc.Col(dcc.Slider(df['Year'].min(), df['Year'].max(),id='year_slider_reg', step = None, value = df['Year'].min(), marks={str(year): str(year) for year in df['Year'].unique()}), width = 5, style={'margin-bottom': 30})],
         justify = 'center'),
     ]
@@ -155,6 +156,9 @@ def update_reg(food_dropdown, valor_area, year_slider_reg):
     if valor_area == 'Continent':
         graph_df = pd.merge(graph_df, continent_df, 'left', left_index = True, right_on = 'Area').set_index('Area').copy()
         color = graph_df['Continent']
+    # elif valor_area == 'GDP':
+    #     graph_df
+
     else:
         color = graph_df.index 
 
