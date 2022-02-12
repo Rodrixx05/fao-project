@@ -8,10 +8,7 @@ import os
 df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_global_format.pkl'))
 coord_df = pd.read_pickle(os.path.join('dataframes_pkl','df_coordenadas.pkl'))
 continent_df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_continentes.pkl'))
-gdp_df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_gdp.pkl'))
-
-uk_index = df[df['Area'] == 'United Kingdom'].index
-df.loc[uk_index, 'Area'] = 'United Kingdom of Great Britain and Northern Ireland'
+income_df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_income.pkl')).set_index('Area')
 
 items_list = list(df['Item'].unique())
 items_list.sort()
@@ -152,15 +149,17 @@ def update_reg(food_dropdown, valor_area, year_slider_reg):
     graph_df.columns = ['CO2 Emissions [tonnes]', 'Production [tonnes]']
     graph_df['Emissions Intensity'] = graph_df['CO2 Emissions [tonnes]'] / graph_df['Production [tonnes]']
     title = f'CO2 emissions derived from {food_dropdown.lower()} production during {year_slider_reg}'
+    category_orders = {}
+    color = graph_df.index
 
     if valor_area == 'Continent':
         graph_df = pd.merge(graph_df, continent_df, 'left', left_index = True, right_on = 'Area').set_index('Area').copy()
         color = graph_df['Continent']
-    # elif valor_area == 'GDP':
-    #     graph_df
-
-    else:
-        color = graph_df.index 
+    elif valor_area == 'GDP':
+        income_year_df = income_df[income_df['Year'] == year_slider_reg].copy()
+        graph_df = pd.merge(graph_df, income_year_df, 'left', left_index = True, right_on = 'Area')
+        color = graph_df['Income Group']
+        category_orders = {'Income Group': ['Low Income', 'Low Middle Income', 'Upper Middle Income', 'High Income']}
 
     fig = px.scatter(
         data_frame = graph_df, 
@@ -171,7 +170,8 @@ def update_reg(food_dropdown, valor_area, year_slider_reg):
         trendline_scope = 'overall', 
         hover_name = graph_df.index,
         hover_data = {'Emissions Intensity': ':.4'},
-        color = color, 
+        color = color,
+        category_orders = category_orders, 
         title = title)
     
     if valor_area == 'Country':
