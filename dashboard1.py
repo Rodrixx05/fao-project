@@ -9,6 +9,7 @@ df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_global_format.pkl'))
 coord_df = pd.read_pickle(os.path.join('dataframes_pkl','df_coordenadas.pkl'))
 continent_df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_continentes.pkl'))
 income_df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_income.pkl')).set_index('Area')
+price_df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_precios.pkl'))
 
 items_list = list(df['Item'].unique())
 items_list.sort()
@@ -43,6 +44,7 @@ app.layout = html.Div(
         [dbc.Col(dcc.RadioItems(id = 'valor_area', options = ['Country', 'Continent', 'GDP'], value = 'Country', inputStyle={"margin-left": "20px", "margin-right": "5px"}), width = 3, style={'margin-bottom': 30}),
         dbc.Col(dcc.Slider(df['Year'].min(), df['Year'].max(),id='year_slider_reg', step = None, value = df['Year'].min(), marks={str(year): str(year) for year in df['Year'].unique()}), width = 5, style={'margin-bottom': 30})],
         justify = 'center'),
+    dbc.Row(dbc.Col(dcc.Graph(id = 'graph_gdp', figure = {}, style = {'height': '65vh'}), width = 10), justify = 'center', align = 'center')
     ]
 )
 
@@ -190,3 +192,21 @@ def update_reg(food_dropdown, valor_area, year_slider_reg):
 if __name__ == '__main__':
     app.run_server(debug=True)
 
+@app.callback(
+    Output('graph_gdp', 'figure'),
+    Input('food_dropdown', 'value'),
+    # Input('year_slider_map', 'value'),
+    # Input('valor', 'value'),
+    # Input('population_map', 'value')
+)
+
+def update_graph_gdp(food_dropdown):
+    graph_df = df[(df['Element'] == 'Emissions intensity') & (df['Item'] == food_dropdown)]
+    graph_df.drop(graph_df[graph_df['Value'] == 0].index, inplace = True)
+    graph_df.drop(columns = ['Partner Countries', 'Partner Country Code'], inplace = True)
+
+    graph_df = graph_df.append(price_df)
+
+    graph_df = graph_df.pivot_table(values = 'Value', index = 'Area', columns = ['Element'])
+
+    
