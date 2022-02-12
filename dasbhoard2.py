@@ -4,10 +4,12 @@ import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+import country_converter as coco
 import os
 
 df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_global_format.pkl'))
 coord_df = pd.read_pickle(os.path.join('dataframes_pkl','df_coordenadas.pkl'))
+
 
 uk_index = df[df['Area'] == 'United Kingdom'].index
 df.loc[uk_index, 'Area'] = 'United Kingdom of Great Britain and Northern Ireland'
@@ -18,6 +20,8 @@ items_list.remove('Population - Est. & Proj.')
 
 countries_list = list(df['Area'].unique())
 countries_list.sort()
+
+print()
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
 
