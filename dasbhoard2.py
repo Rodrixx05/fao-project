@@ -1,10 +1,9 @@
 from dash import Dash, dcc, html
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-import country_converter as coco
 import os
 
 df = pd.read_pickle(os.path.join('dataframes_pkl', 'df_global_format.pkl'))
@@ -21,16 +20,19 @@ items_list.remove('Population - Est. & Proj.')
 countries_list = list(df['Area'].unique())
 countries_list.sort()
 
-print()
-
 app = Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
 
 app.layout = html.Div(
     [
     dbc.Row(dbc.Col(html.H1('Food distribution and environmental impact for a chosen country', style={'textAlign': 'center'}), style={'margin-top': 30, 'margin-bottom': 30})),
     dbc.Row(
-        [dbc.Col(dcc.Dropdown(id = 'food_dropdown', options = items_list, placeholder = 'Select a food', value = 'Apples'), width = 4),
-        dbc.Col(dcc.Dropdown(id = 'country_dropdown', options = countries_list, placeholder = 'Select a country', value = 'Spain'), width = 4)], 
+        [dbc.Col(dcc.Dropdown(id = 'food_dropdown', options = items_list, placeholder = 'Select a food', value = 'Apples'), width = 4, style={'margin-bottom': 30}),
+        dbc.Col(dcc.Dropdown(id = 'country_dropdown', options = countries_list, placeholder = 'Select a country', value = 'Spain'), width = 4, style={'margin-bottom': 30})], 
+        justify='center', align='center'),
+    dbc.Row(
+        [dbc.Col(dcc.Graph(id = 'time_series', figure = {}), width = 4),
+        dbc.Col(dcc.Graph(id = 'gauge_autoconsum', figure = {}), width = 4),
+        dbc.Col(dcc.Graph(id = 'distribution_emissions', figure = {}), width = 4)],
         justify='center', align='center'),
     dbc.Row(dbc.Col(dcc.Graph(id = 'graph_sankey', figure = {}), width = 10), justify = 'center', align = 'center'),
     dbc.Row(dbc.Col(dcc.Slider(df['Year'].min(), df['Year'].max(),id='year_slider_sankey', step = None, value = df['Year'].min(), marks={str(year): str(year) for year in df['Year'].unique()}), width = 6, style={'margin-bottom': 30}), justify = 'center'),
@@ -49,6 +51,77 @@ app.layout = html.Div(
         dbc.Col(dcc.Slider(df['Year'].min(), df['Year'].max(),id='year_slider_imp_emissions', step = None, value = df['Year'].min(), marks={str(year): str(year) for year in df['Year'].unique()}), width = 5, style={'margin-bottom': 30})],
         justify = 'center'),
     ])
+
+@app.callback(
+    [Output('time_series', 'figure'),
+    Output('gauge_autoconsum', 'figure'),
+    Output('distribution_emissions', 'figure')],
+    Input('food_dropdown', 'value'),
+    Input('country_dropdown', 'value')
+)
+
+def update_summary(food_dropdown, country_dropdown):
+    graph1_df = df[(df['Element'] == 'Emissions (CO2eq)') & (df['Area'] == country_dropdown) & (df['Item'] == food_dropdown)].copy()
+    graph1_df['Year'] = pd.to_datetime(graph1_df['Year'], format = '%Y')
+    graph1_df['Value'] = graph1_df['Value'] * 1000
+    labels1 = {'Value': 'CO2 Emissions [T]'}
+    
+    f'CO2 Emissions between {graph1_df["Year"].dt.year.min()} and {graph1_df["Year"].dt.year.max()}'
+
+    fig1 = px.area(graph1_df, x = 'Year', y = 'Value', labels = labels1)
+    fig1.update_layout(showlegend = False,     
+        title = {
+            'text': "Local CO2 Emissions time-series",
+            'y':0.95,
+            'x':0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'})
+
+    elementos_graph2 = ['Import Quantity', 'Export Quantity', 'Production']
+
+    graph2_df = df[(df['Element'].isin(elementos_graph2)) & (df['Area'] == country_dropdown) & (df['Item'] == food_dropdown) & (df['Area'] == df['Partner Countries'])].copy()
+    graph2_df = graph2_df.groupby(['Area', 'Item', 'Element']).sum().reset_index()[['Element', 'Value']]
+    graph2_df.set_index('Element', inplace = True)
+
+    for element in elementos_graph2:
+        if element not in graph2_df.index:
+            graph2_df = pd.concat([graph2_df, pd.Series([0], index = [element])])
+
+    ratio = (graph2_df.loc['Production', 'Value'] - graph2_df.loc['Export Quantity', 'Value']) / (graph2_df.loc['Production', 'Value'] + graph2_df.loc['Import Quantity', 'Value']) * 100
+
+    if ratio < 25:
+        color = 'red'
+    elif 25 <= ratio < 50:
+        color = 'orange'
+    elif 50 <= ratio < 75:
+        color = 'gold'
+    else:
+        color = 'green'
+
+    fig2= go.Figure(go.Indicator(
+    mode = "gauge+number",
+    value = ratio,
+    title = {'text': "Self-consumption"},
+    domain = {'x': [0, 1], 'y': [0, 1]},
+    number = {'valueformat': '.2r', 'suffix': '%'},
+    gauge = {'axis': {'range': [None, 100], 'tickmode': 'linear', 'tick0': 0, 'dtick': 25}, 'bar': {'color': color}}))
+
+    elementos_graph3 = ['Import Production Emissions Quantity', 'Import Transport Emissions Quantity']
+    import_emissions = df[(df['Element'].isin(elementos_graph3)) & (df['Area'] == country_dropdown) & (df['Item'] == food_dropdown)]['Value'].sum()
+    local_emissions = graph1_df['Value'].sum()
+    graph3_df = pd.DataFrame({'Origin': ['Local Emissions', 'Imports Emissions'], 'CO2 Emissions [T]': [local_emissions, import_emissions]})
+    color_map = {'Local Emissions': '636EFA', 'Imports Emissions': 'EF553B'}
+    fig3 = px.pie(graph3_df, values = 'CO2 Emissions [T]', names = 'Origin', color = 'Origin', color_discrete_map = color_map)
+
+    fig3.update_layout(title = {
+        'text': "CO2 Emissions' origin",
+        'y':0.95,
+        'x':0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'}, legend = dict(
+        orientation="h"))
+
+    return fig1, fig2, fig3
 
 @app.callback(
     Output('graph_sankey', 'figure'),
