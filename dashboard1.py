@@ -48,7 +48,10 @@ app.layout = html.Div(
         dbc.Col(dcc.Slider(df['Year'].min(), df['Year'].max(),id='year_slider_reg', step = None, value = df['Year'].min(), marks={str(year): str(year) for year in df['Year'].unique()}), width = 5, style={'margin-bottom': 30})],
         justify = 'center'),
     dbc.Row(dbc.Col(dcc.Graph(id = 'graph_prices', figure = {}, style = {'height': '75vh'}), width = 10), justify = 'center', align = 'center'),
-    dbc.Row(dbc.Col(dcc.Slider(df['Year'].min(), df['Year'].max(), step = None, value = df['Year'].min(), marks={str(year): str(year) for year in df['Year'].unique()}, id='year_slider_prices'), width = {'size': 6, 'offset': 3}, style={'margin-top': 15, 'margin-bottom': 30})),
+    dbc.Row(  
+        [dbc.Col(dcc.RadioItems(id = 'valor_price', options = ['GDP/Cap', 'Production'], value = 'GDP/Cap', inputStyle={"margin-left": "20px", "margin-right": "5px"}), width = 3, style={'margin-bottom': 30}),
+        dbc.Col(dcc.Slider(df['Year'].min(), df['Year'].max(),id='year_slider_prices', step = None, value = df['Year'].min(), marks={str(year): str(year) for year in df['Year'].unique()}), width = 5, style={'margin-bottom': 30})],
+        justify = 'center'),
     dbc.Row(dbc.Col(dcc.Graph(id = 'graph_losses', figure = {}, style = {'height': '75vh'}), width = 10), justify = 'center', align = 'center'),
     dbc.Row(  
         [dbc.Col(dcc.RadioItems(id = 'valor_losses', options = ['Totals', 'Per Capita'], value = 'Totals', inputStyle={"margin-left": "20px", "margin-right": "5px"}), width = 3, style={'margin-bottom': 30}),
@@ -201,11 +204,13 @@ def update_reg(food_dropdown, valor_area, year_slider_reg):
 @app.callback(
     Output('graph_prices', 'figure'),
     Input('food_dropdown', 'value'),
+    Input('valor_price', 'value'),
     Input('year_slider_prices', 'value')
 )
 
-def update_graph_gdp(food_dropdown, year_slider_prices):
-    graph_df = df[(df['Element'] == 'Emissions intensity') & (df['Item'] == food_dropdown) & (df['Year'] == year_slider_prices)]
+def update_graph_prices(food_dropdown, valor_price, year_slider_prices):
+    elements = ['Emissions intensity', 'Production']
+    graph_df = df[(df['Element'].isin(elements)) & (df['Item'] == food_dropdown) & (df['Year'] == year_slider_prices)]
     graph_df.drop(graph_df[graph_df['Value'] == 0].index, inplace = True)
     graph_df.drop(columns = ['Partner Countries', 'Partner Country Code'], inplace = True)
 
@@ -223,23 +228,35 @@ def update_graph_gdp(food_dropdown, year_slider_prices):
     graph_df.reset_index(inplace = True)
     
     title = f'Relation between emissions intensity and {food_dropdown.lower()} price in the world during {year_slider_prices}'
-    labels = {'Emissions intensity': 'Emissions Intensity [TCO2/Tfood]', 'Producer Price (USD/tonne)': 'Producer Price [USD/Tfood]', 'GDP_PCAP': 'GDP/Cap'}
+    labels = {'Emissions intensity': 'Emissions Intensity [TCO2/Tfood]', 'Producer Price (USD/tonne)': 'Producer Price [USD/Tfood]'}
+
+    if valor_price == 'GDP/Cap':
+        hover = """<b>%{customdata[0]}</b><br><br>
+Production price: %{x:.2f}$/Tfood<br>
+Emissions Intensity: %{y:.4f}TCO2/Tfood<br>
+GDP per Capita: %{marker.size:$,.0f}
+<extra></extra>"""
+    else:
+        hover = """<b>%{customdata[0]}</b><br><br>
+Production price: %{x:.2f}$/Tfood<br>
+Emissions Intensity: %{y:.4f}TCO2/Tfood<br>
+Production: %{marker.size:.4s}Tfood
+<extra></extra>"""       
+
+    size = graph_df['GDP_PCAP'] ** 0.7 if valor_price == 'GDP/Cap' else graph_df['Production']**0.5
 
     fig = px.scatter(
         data_frame = graph_df, 
         y = 'Emissions intensity', 
         x = 'Producer Price (USD/tonne)',
-        size = graph_df['GDP_PCAP'] ** 0.7,
+        size = size,
         color = 'Continent',
         labels = labels,
         title = title,
         custom_data = ['Area'])
     
-    fig.update_traces(hovertemplate = "<b>%{customdata[0]}</b><br><br>" +
-        "Production price: %{x:.2f}$/Tfood<br>" +
-        "Emissions Intensity: %{y:.4f}TCO2/Tfood<br>" +
-        "GDP per Capita: %{marker.size:$,.0f}" +
-        "<extra></extra>")
+    
+    fig.update_traces(hovertemplate = hover)
     
     return fig
 
