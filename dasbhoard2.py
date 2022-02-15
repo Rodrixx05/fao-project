@@ -200,7 +200,7 @@ def update_map_imp_exp(food_dropdown, country_dropdown, valor_imp_exp, year_slid
                             hovertemplate = f'Selected Country= {country_dropdown}<extra></extra>'))
 
     fig.update_layout(title={"yref": "paper", "y" : 1, "yanchor" : "bottom"},
-                        title_pad = {'b': 1}, autosize=True, 
+                        title_pad = {'b': 10}, autosize=True, 
                         margin = dict(l=10, r=5, b=10, t=30, pad=2, autoexpand=True))
     
     fig.update_geos(fitbounds="locations")
@@ -252,7 +252,7 @@ def update_map_imp_emissions(food_dropdown, country_dropdown, valor_imp_emission
                             hovertemplate = f'Selected Country= {country_dropdown}<extra></extra>'))
 
     fig.update_layout(title={"yref": "paper", "y" : 1, "yanchor" : "bottom"},
-                        title_pad = {'b': 1}, autosize=True, 
+                        title_pad = {'b': 10}, autosize=True, 
                         margin = dict(l=10, r=5, b=10, t=30, pad=2, autoexpand=True))
     
     fig.update_geos(fitbounds="locations")
