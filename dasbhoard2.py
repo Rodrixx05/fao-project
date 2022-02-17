@@ -264,4 +264,4 @@ def update_map_imp_emissions(food_dropdown, country_dropdown, valor_imp_emission
     return fig, dbc.Table.from_dataframe(return_df, striped=True, bordered=True)
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=8051)

@@ -296,7 +296,7 @@ def update_graph_losses(food_dropdown, valor_losses, year_slider_losses):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=8050)
 
 
 
